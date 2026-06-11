@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SupplyMind Agent — Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --accent3: #8b5cf6;
+    --green: #10b981;
+    --orange: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 40px 24px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .badge {
+    display: inline-block;
+    background: linear-gradient(90deg, #1e3a5f, #1e2d45);
+    border: 1px solid var(--accent);
+    color: var(--accent2);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #e2e8f0, #3b82f6, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  .diagram {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    align-items: center;
+  }
+
+  /* ── Layers ── */
+  .layer {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .layer-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+    align-self: flex-start;
+    padding-left: 4px;
+  }
+
+  /* ── Cards ── */
+  .card-row {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    flex: 1;
+    max-width: 280px;
+    position: relative;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .card-icon {
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .card-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .card-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 8px;
+    letter-spacing: 0.5px;
+  }
+
+  .tag-blue { background: #1e3a5f; color: #60a5fa; }
+  .tag-cyan { background: #0c2a30; color: #22d3ee; }
+  .tag-purple { background: #2d1b4e; color: #a78bfa; }
+  .tag-green { background: #0a2e20; color: #34d399; }
+  .tag-orange { background: #2e1e08; color: #fbbf24; }
+
+  /* ── Foundry Agent (center block) ── */
+  .agent-block {
+    width: 100%;
+    background: linear-gradient(135deg, #111827, #1a2235);
+    border: 1px solid var(--accent);
+    border-radius: 14px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .agent-block::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(6,182,212,0.03));
+    pointer-events: none;
+  }
+
+  .agent-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .agent-logo {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #1d4ed8, #0891b2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .agent-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .agent-sub {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .ms-badge {
+    margin-left: auto;
+    background: #1e3a5f;
+    border: 1px solid #3b82f6;
+    color: #60a5fa;
+    font-size: 10px;
+    font-family: var(--mono);
+    padding: 3px 10px;
+    border-radius: 6px;
+  }
+
+  /* ── Reasoning Steps ── */
+  .steps {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .step {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    flex: 1;
+    min-width: 140px;
+    position: relative;
+  }
+
+  .step-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent2);
+    margin-bottom: 4px;
+  }
+
+  .step-name {
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .step-detail {
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* ── Models Layer ── */
+  .models-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    width: 100%;
+  }
+
+  .model-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+
+  .model-card:hover { border-color: var(--green); }
+
+  .model-card .icon { font-size: 18px; margin-bottom: 6px; }
+  .model-card .name { font-size: 10px; font-weight: 600; }
+  .model-card .algo { font-size: 9px; color: var(--muted); margin-top: 3px; font-family: var(--mono); }
+
+  /* ── Arrow ── */
+  .arrow-down {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0;
+    gap: 0;
+  }
+
+  .arrow-line {
+    width: 2px;
+    height: 24px;
+    background: linear-gradient(180deg, var(--accent), var(--accent2));
+  }
+
+  .arrow-tip {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--accent2);
+  }
+
+  .arrow-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+
+  /* ── Bottom output ── */
+  .output-row {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .output-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    flex: 1;
+    transition: border-color 0.2s;
+  }
+
+  .output-card:hover { border-color: var(--green); }
+
+  .output-card .o-icon { font-size: 20px; margin-bottom: 6px; }
+  .output-card .o-title { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .output-card .o-desc { font-size: 10px; color: var(--muted); line-height: 1.5; }
+
+  /* ── Legend ── */
+  .legend {
+    max-width: 960px;
+    margin: 32px auto 0;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  /* ── Dual-track note ── */
+  .dual-note {
+    max-width: 960px;
+    margin: 20px auto 0;
+    background: #0a2e20;
+    border: 1px solid #10b981;
+    border-radius: 10px;
+    padding: 14px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .dual-note .dn-icon { font-size: 18px; flex-shrink: 0; }
+  .dual-note .dn-text { font-size: 12px; color: #6ee7b7; line-height: 1.6; }
+  .dual-note .dn-text strong { color: #34d399; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Microsoft Agents League 2026 · Reasoning Agents Track</div>
+  <h1>SupplyMind Agent</h1>
+  <p class="subtitle">AI-Driven Supply Chain Reasoning Agent · Architecture Diagram</p>
+</header>
+
+<div class="diagram">
+
+  <!-- INPUT LAYER -->
+  <div class="layer">
+    <div class="layer-label">① Input Layer</div>
+    <div class="card-row">
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <div class="card-title">Order Request</div>
+        <div class="card-desc">Product ID, quantity, delivery location, urgency level</div>
+        <span class="card-tag tag-blue">JSON / REST</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">📊</div>
+        <div class="card-title">Real-Time Data Feeds</div>
+        <div class="card-desc">Live inventory levels, warehouse stock, supplier status</div>
+        <span class="card-tag tag-cyan">Stream Input</span>
+      </div>
+      <div class="card">
+        <div class="card-icon">📜</div>
+        <div class="card-title">Historical Sales Data</div>
+        <div class="card-desc">CSV / DB records used for demand forecasting & trend analysis</div>
+        <span class="card-tag tag-purple">PostgreSQL / CSV</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-down">
+    <div class="arrow-line"></div>
+    <div class="arrow-tip"></div>
+    <div class="arrow-label">USER QUERY + DATA</div>
+  </div>
+
+  <!-- AGENT LAYER -->
+  <div class="layer">
+    <div class="layer-label">② Microsoft Foundry — Reasoning Agent</div>
+    <div class="agent-block">
+      <div class="agent-header">
+        <div class="agent-logo">🧠</div>
+        <div>
+          <div class="agent-name">SupplyMind Agent</div>
+          <div class="agent-sub">microsoft-foundry · multi-step-reasoning · gpt-4o</div>
+        </div>
+        <span class="ms-badge">FOUNDRY</span>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">STEP 01</div>
+          <div class="step-name">Parse &amp; Understand</div>
+          <div class="step-detail">Decompose query, identify intent, extract product/location</div>
+        </div>
+        <div class="step">
+          <div class="step-num">STEP 02</div>
+          <div class="step-name">Forecast Demand</div>
+          <div class="step-detail">Call demand_forecast API → ARIMA/Prophet/LSTM prediction</div>
+        </div>
+        <div class="step">
+          <div class="step-num">STEP 03</div>
+          <div class="step-name">Check Inventory</div>
+          <div class="step-detail">Query inventory_manager → stock levels, reorder points, EOQ</div>
+        </div>
+        <div class="step">
+          <div class="step-num">STEP 04</div>
+          <div class="step-name">Select Warehouse</div>
+          <div class="step-detail">Run warehouse_optimizer → cost, distance, capacity scoring</div>
+        </div>
+        <div class="step">
+          <div class="step-num">STEP 05</div>
+          <div class="step-name">Optimize Route</div>
+          <div class="step-detail">route_optimizer → VRP solver, ETA, vehicle assignment</div>
+        </div>
+        <div class="step">
+          <div class="step-num">STEP 06</div>
+          <div class="step-name">Explain &amp; Decide</div>
+          <div class="step-detail">Synthesize all steps → structured decision + human-readable reasoning</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-down">
+    <div class="arrow-line"></div>
+    <div class="arrow-tip"></div>
+    <div class="arrow-label">TOOL CALLS</div>
+  </div>
+
+  <!-- ML MODELS LAYER -->
+  <div class="layer">
+    <div class="layer-label">③ Your Existing ML Models (Python / Flask API)</div>
+    <div class="models-grid">
+      <div class="model-card">
+        <div class="icon">📈</div>
+        <div class="name">Demand Forecaster</div>
+        <div class="algo">ARIMA · Prophet · LSTM</div>
+      </div>
+      <div class="model-card">
+        <div class="icon">🏭</div>
+        <div class="name">Warehouse Optimizer</div>
+        <div class="algo">Cost · Distance · Capacity</div>
+      </div>
+      <div class="model-card">
+        <div class="icon">🗺️</div>
+        <div class="name">Route Optimizer</div>
+        <div class="algo">VRP · TSP Solver</div>
+      </div>
+      <div class="model-card">
+        <div class="icon">📦</div>
+        <div class="name">Inventory Manager</div>
+        <div class="algo">EOQ · Safety Stock</div>
+      </div>
+      <div class="model-card">
+        <div class="icon">🤝</div>
+        <div class="name">Supplier Predictor</div>
+        <div class="algo">Reliability · Lead Time</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-down">
+    <div class="arrow-line"></div>
+    <div class="arrow-tip"></div>
+    <div class="arrow-label">STRUCTURED RESPONSE</div>
+  </div>
+
+  <!-- OUTPUT LAYER -->
+  <div class="layer">
+    <div class="layer-label">④ Output Layer</div>
+    <div class="output-row">
+      <div class="output-card">
+        <div class="o-icon">🖥️</div>
+        <div class="o-title">Interactive Dashboard</div>
+        <div class="o-desc">Real-time KPIs, supply chain map, reasoning trace, alerts — HTML/JS frontend</div>
+      </div>
+      <div class="output-card">
+        <div class="o-icon">🔔</div>
+        <div class="o-title">Decision Output</div>
+        <div class="o-desc">Best warehouse, optimal route, reorder alerts, step-by-step reasoning explanation</div>
+      </div>
+      <div class="output-card">
+        <div class="o-icon">📋</div>
+        <div class="o-title">REST API Response</div>
+        <div class="o-desc">JSON response consumed by frontend or downstream systems via /api/v1/agent/decide</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .diagram -->
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Microsoft Foundry (Azure AI)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Your Python ML Models</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div>PostgreSQL / Data Layer</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>GitHub Copilot (Dev assist)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div>Flask REST API Bridge</div>
+</div>
+
+</body>
+</html>
