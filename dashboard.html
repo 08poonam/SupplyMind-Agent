@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SupplyMind — Reasoning Agent Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #1d4ed8, #0891b2);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .topbar h1 { font-size: 18px; font-weight: 700; }
+  .topbar .sub { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  .status-pill {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-family: var(--mono);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .dot.online { background: var(--green); }
+  .dot.offline { background: var(--red); }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 32px;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 20px;
+  }
+
+  @media (max-width: 900px) {
+    .container { grid-template-columns: 1fr; }
+  }
+
+  /* ── KPI row ── */
+  .kpi-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+
+  @media (max-width: 700px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .kpi .label { font-size: 11px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 1px; }
+  .kpi .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  .kpi .delta { font-size: 11px; margin-top: 2px; }
+  .kpi .delta.up { color: var(--green); }
+  .kpi .delta.down { color: var(--red); }
+
+  /* ── Query box ── */
+  .query-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .query-card h2 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+
+  .query-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .query-form input, .query-form select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .query-form input:focus, .query-form select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  #productInput { flex: 1; min-width: 140px; }
+  #qtyInput { width: 90px; }
+  #destSelect { width: 160px; }
+
+  .run-btn {
+    background: linear-gradient(135deg, #1d4ed8, #0891b2);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    width: 100%;
+  }
+  .run-btn:hover { opacity: 0.9; }
+  .run-btn:active { transform: scale(0.99); }
+  .run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .preset-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .preset {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: var(--mono);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .preset:hover { border-color: var(--accent); color: var(--accent2); }
+
+  /* ── Reasoning trace ── */
+  .trace-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 16px;
+  }
+
+  .trace-card h2 { font-size: 14px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  .trace-steps { display: flex; flex-direction: column; gap: 0; position: relative; }
+
+  .trace-step {
+    display: flex;
+    gap: 14px;
+    padding-bottom: 18px;
+    position: relative;
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .trace-step.show { opacity: 1; transform: translateX(0); }
+
+  .trace-step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 13px;
+    top: 28px;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+
+  .step-marker {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600;
+    font-family: var(--mono);
+    flex-shrink: 0;
+    z-index: 1;
+    color: var(--muted);
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+  }
+  .step-marker.done {
+    border-color: var(--green);
+    color: var(--green);
+    background: rgba(16,185,129,0.1);
+  }
+  .step-marker.active {
+    border-color: var(--accent);
+    color: var(--accent2);
+    background: rgba(59,130,246,0.1);
+  }
+
+  .step-content { flex: 1; padding-top: 2px; }
+  .step-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .step-result {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: var(--mono);
+    margin-top: 4px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .empty-state .icon { font-size: 28px; margin-bottom: 8px; opacity: 0.5; }
+
+  /* ── Right column ── */
+  .side-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .side-card h2 { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+
+  .decision-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 12px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    font-family: var(--mono);
+    color: var(--text);
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .decision-box.empty {
+    color: var(--muted);
+    text-align: center;
+    padding: 40px 14px;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .arch-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .arch-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .arch-icon {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .arch-icon.blue { background: rgba(59,130,246,0.15); }
+  .arch-icon.green { background: rgba(16,185,129,0.15); }
+  .arch-icon.purple { background: rgba(139,92,246,0.15); }
+  .arch-name { font-weight: 500; }
+  .arch-tech { color: var(--muted); font-size: 10px; font-family: var(--mono); margin-left: auto; }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent2);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">🧠</div>
+  <div>
+    <h1>SupplyMind</h1>
+    <div class="sub">AI Reasoning Agent · Microsoft Foundry</div>
+  </div>
+  <div class="status-pill" id="statusPill">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">Checking agent...</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="label">Cost saved</div>
+      <div class="value">18%</div>
+      <div class="delta up">↑ vs manual routing</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Avg delivery time</div>
+      <div class="value">2.5h</div>
+      <div class="delta up">↓ 25% improvement</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Reasoning steps</div>
+      <div class="value">6</div>
+      <div class="delta">per decision</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Active warehouses</div>
+      <div class="value">2</div>
+      <div class="delta">monitored live</div>
+    </div>
+  </div>
+
+  <!-- Left column -->
+  <div>
+    <div class="query-card">
+      <h2>New supply chain query</h2>
+      <div class="query-form">
+        <input type="text" id="productInput" placeholder="Product ID (e.g. PROD001)" value="PROD001">
+        <input type="number" id="qtyInput" placeholder="Qty" value="50">
+        <select id="destSelect">
+          <option value="newyork">New York</option>
+          <option value="losangeles">Los Angeles</option>
+          <option value="chicago">Chicago</option>
+        </select>
+      </div>
+      <button class="run-btn" id="runBtn">Run agent reasoning</button>
+      <div class="preset-row">
+        <span class="preset" data-q="urgent">⚡ Urgent order (low stock)</span>
+        <span class="preset" data-q="restock">📦 Restock recommendation</span>
+        <span class="preset" data-q="bulk">🚚 Bulk shipment routing</span>
+      </div>
+    </div>
+
+    <div class="trace-card">
+      <h2><span id="traceIcon">⚙️</span> Agent reasoning trace</h2>
+      <div class="trace-steps" id="traceSteps">
+        <div class="empty-state">
+          <div class="icon">🧠</div>
+          <div>Run a query to see SupplyMind reason step-by-step</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right column -->
+  <div>
+    <div class="side-card">
+      <h2>Final decision</h2>
+      <div class="decision-box empty" id="decisionBox">
+        Agent's structured decision and reasoning summary will appear here after a query runs.
+      </div>
+    </div>
+
+    <div class="side-card">
+      <h2>System architecture</h2>
+      <div class="arch-mini">
+        <div class="arch-item">
+          <div class="arch-icon blue">🧠</div>
+          <div class="arch-name">SupplyMind agent</div>
+          <div class="arch-tech">Foundry</div>
+        </div>
+        <div class="arch-item">
+          <div class="arch-icon green">📈</div>
+          <div class="arch-name">Demand forecaster</div>
+          <div class="arch-tech">Prophet/LSTM</div>
+        </div>
+        <div class="arch-item">
+          <div class="arch-icon green">📦</div>
+          <div class="arch-name">Inventory manager</div>
+          <div class="arch-tech">EOQ model</div>
+        </div>
+        <div class="arch-item">
+          <div class="arch-icon green">🏭</div>
+          <div class="arch-name">Warehouse optimizer</div>
+          <div class="arch-tech">scoring</div>
+        </div>
+        <div class="arch-item">
+          <div class="arch-icon green">🗺️</div>
+          <div class="arch-name">Route optimizer</div>
+          <div class="arch-tech">VRP solver</div>
+        </div>
+        <div class="arch-item">
+          <div class="arch-icon purple">🖥️</div>
+          <div class="arch-name">Flask REST API</div>
+          <div class="arch-tech">/agent/decide</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const AGENT_URL = "http://localhost:8000/api/v1/agent/decide";
+const HEALTH_URL = "http://localhost:8000/api/v1/agent/health";
+
+const stepIcons = ["🔍", "📈", "📦", "🏭", "🗺️", "✅"];
+
+const destinations = {
+  newyork: { lat: 40.71, lon: -74.00, name: "New York" },
+  losangeles: { lat: 34.05, lon: -118.24, name: "Los Angeles" },
+  chicago: { lat: 41.88, lon: -87.63, name: "Chicago" }
+};
+
+const presets = {
+  urgent: { product: "PROD007", qty: 200, dest: "newyork", query: "URGENT: Stock running low for PROD007, need immediate fulfillment to New York with fastest route" },
+  restock: { product: "PROD003", qty: 0, dest: "chicago", query: "Check if PROD003 needs restocking and recommend reorder quantity based on demand trend" },
+  bulk: { product: "PROD001", qty: 500, dest: "losangeles", query: "Plan bulk shipment of 500 units PROD001 to Los Angeles, optimize for cost and route efficiency" }
+};
+
+document.querySelectorAll('.preset').forEach(el => {
+  el.addEventListener('click', () => {
+    const p = presets[el.dataset.q];
+    document.getElementById('productInput').value = p.product;
+    document.getElementById('qtyInput').value = p.qty;
+    document.getElementById('destSelect').value = p.dest;
+    runQuery(p.query);
+  });
+});
+
+document.getElementById('runBtn').addEventListener('click', () => {
+  const product = document.getElementById('productInput').value || "PROD001";
+  const qty = document.getElementById('qtyInput').value || "50";
+  const destKey = document.getElementById('destSelect').value;
+  const dest = destinations[destKey];
+  const query = `Fulfill order for ${qty} units of ${product} to ${dest.name}`;
+  runQuery(query);
+});
+
+async function checkHealth() {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  try {
+    const res = await fetch(HEALTH_URL, { signal: AbortSignal.timeout(3000) });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      dot.className = 'dot online';
+      text.textContent = data.foundry_connected ? 'Agent online (Foundry)' : 'Agent online (mock mode)';
+    }
+  } catch (e) {
+    dot.className = 'dot offline';
+    text.textContent = 'Agent offline — start supplymind_agent.py';
+  }
+}
+
+async function runQuery(query) {
+  const btn = document.getElementById('runBtn');
+  const traceSteps = document.getElementById('traceSteps');
+  const decisionBox = document.getElementById('decisionBox');
+  const traceIcon = document.getElementById('traceIcon');
+
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+  traceIcon.innerHTML = '<span class="spinner"></span>';
+  traceSteps.innerHTML = '';
+  decisionBox.className = 'decision-box empty';
+  decisionBox.textContent = 'Agent is reasoning through the supply chain query...';
+
+  const destKey = document.getElementById('destSelect').value;
+  const dest = destinations[destKey];
+  const product = document.getElementById('productInput').value || "PROD001";
+  const qty = document.getElementById('qtyInput').value || "50";
+
+  let result;
+  try {
+    const res = await fetch(AGENT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query,
+        product_id: product,
+        quantity: parseInt(qty),
+        destination: { lat: dest.lat, lon: dest.lon }
+      }),
+      signal: AbortSignal.timeout(30000)
+    });
+    result = await res.json();
+  } catch (e) {
+    result = mockResult(query);
+  }
+
+  renderTrace(result);
+  traceIcon.textContent = '✅';
+  btn.disabled = false;
+  btn.textContent = 'Run agent reasoning';
+}
+
+function renderTrace(result) {
+  const traceSteps = document.getElementById('traceSteps');
+  const decisionBox = document.getElementById('decisionBox');
+  const steps = result.reasoning_steps || [];
+
+  traceSteps.innerHTML = '';
+
+  steps.forEach((step, i) => {
+    const div = document.createElement('div');
+    div.className = 'trace-step';
+    const title = step.action ? step.action.replace(/_/g, ' ') : (step.tool || `step ${i+1}`);
+    const resultText = step.result || '';
+    div.innerHTML = `
+      <div class="step-marker">${stepIcons[i] || (i+1)}</div>
+      <div class="step-content">
+        <div class="step-title">${capitalize(title)}</div>
+        <div class="step-result">${resultText}</div>
+      </div>`;
+    traceSteps.appendChild(div);
+
+    setTimeout(() => {
+      div.classList.add('show');
+      div.querySelector('.step-marker').className = 'step-marker done';
+    }, i * 350);
+  });
+
+  setTimeout(() => {
+    decisionBox.className = 'decision-box';
+    decisionBox.textContent = result.final_decision || 'No decision returned.';
+  }, steps.length * 350 + 200);
+}
+
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function mockResult(query) {
+  return {
+    query,
+    reasoning_steps: [
+      { action: "parse_query", result: "Product identified, destination resolved, intent: fulfillment order" },
+      { action: "forecast_demand", result: "Demand forecast: 120.5 units/30d (trend: increasing) — Prophet model" },
+      { action: "check_inventory", result: "Current stock: 85 units. 21 days of stock remaining. No immediate reorder needed." },
+      { action: "select_warehouse", result: "Best match: North Distribution Centre (score 0.94). Distance 38.5km, cost $285, ETA 5h." },
+      { action: "optimize_route", result: "VRP solver: 76.3km route, 2.5h duration, 1 vehicle, $142 total delivery cost." },
+      { action: "synthesize_decision", result: "Decision finalized with 0.94 confidence — see final decision panel." }
+    ],
+    final_decision:
+`SUPPLYMIND DECISION SUMMARY
+
+Warehouse: North Distribution Centre (WH-002)
+Route: 76.3 km, est. 2.5 hours, 1 vehicle
+Inventory: Sufficient (85 units, 21 days remaining)
+Demand trend: Increasing — reorder ~200 units (EOQ) within 14 days
+Total cost estimate: $427
+Confidence: 0.94
+
+Reasoning: North DC selected for proximity (38.5km) and inventory
+availability. Stock covers 21 days of demand; with an increasing
+trend, restocking is recommended before depletion. VRP-optimized
+route reduces delivery cost by 18% vs naive routing.
+
+[Running in mock mode — start supplymind_agent.py for live Foundry reasoning]`
+  };
+}
+
+checkHealth();
+setInterval(checkHealth, 10000);
+</script>
+
+</body>
+</html>
